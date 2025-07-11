@@ -34,12 +34,10 @@ ufdf_df = generate_ufdf_data()
 def generate_viral_filtration_data():
     """Generates data for a viral filtration capacity study."""
     throughput = np.linspace(0, 1000, 50) # L/m^2
-    # Simulate flow rate decay based on a quadratic model (classic plugging)
     initial_flow = 200 # L/hr
     decay_rate = 0.00015
     flow_rate = initial_flow - (decay_rate * throughput**2) + np.random.normal(0, 2, 50)
     flow_rate = np.clip(flow_rate, 0, initial_flow)
-    # Pressure increases as flow rate is maintained (or tries to be)
     pressure = 10 + 0.02 * throughput + np.random.normal(0, 0.5, 50)
     pressure[flow_rate < 100] += np.linspace(0, 5, len(pressure[flow_rate < 100]))
     return pd.DataFrame({'Throughput (L/m²)': throughput, 'Flow Rate (L/hr)': flow_rate, 'Pressure (psi)': pressure})
@@ -57,7 +55,6 @@ tab1, tab2, tab3 = st.tabs([
 with tab1:
     st.header("Chromatography Step Characterization")
     st.caption("Analysis of elution profiles to assess yield, purity, and impurity clearance.")
-    # ... (Code from previous correct version) ...
     with st.expander("🔬 **Experiment & Method**"):
         st.markdown("""...""") # Hidden for brevity
     col1, col2 = st.columns(2)
@@ -79,7 +76,6 @@ with tab1:
 with tab2:
     st.header("Ultrafiltration/Diafiltration (UF/DF) Performance")
     st.caption("Analyzing transmembrane pressure (TMP) and flux to monitor membrane performance and detect fouling.")
-    # ... (Code from previous correct version) ...
     with st.expander("🔬 **Experiment & Method**"):
         st.markdown("""...""") # Hidden for brevity
     fig = go.Figure()
@@ -120,8 +116,10 @@ with tab3:
     flow_threshold = flow_initial * 0.8
     capacity_point = viral_df[viral_df['Flow Rate (L/hr)'] < flow_threshold].iloc[0]
     
+    # --- FIX: Use double quotes for the f-string to allow single quotes inside ---
     fig_viral.add_vline(x=capacity_point['Throughput (L/m²)'], line_width=2, line_dash="dash", line_color="red",
-                  annotation_text=f"Capacity Limit ({capacity_point['Throughput (L/m²):.0f} L/m²)", annotation_position="top left")
+                  annotation_text=f"Capacity Limit ({capacity_point['Throughput (L/m²)']:.0f} L/m²)", annotation_position="top left")
+    # --- END OF FIX ---
 
     fig_viral.update_layout(
         title="Viral Filter Capacity Study: Flow & Pressure vs. Throughput",
@@ -133,11 +131,11 @@ with tab3:
     st.plotly_chart(fig_viral, use_container_width=True)
     
     with st.expander("📊 **Results & MSAT Interpretation**"):
-        st.markdown("""
+        st.markdown(f"""
         #### Analysis of the Filtration Profile
         - **Linear Phase (0 - ~500 L/m²):** The flow rate remains high and stable, and the pressure increases linearly and predictably. This indicates normal, unrestricted flow through the filter.
         - **Plugging Phase (> 500 L/m²):** The flow rate begins to decay at an accelerated rate, while the pressure begins to rise more sharply. This signifies that the filter pores are becoming constricted, a phenomenon known as filter plugging or fouling.
-        - **Capacity Limit:** The analysis identifies the capacity limit at **{capacity_point['Throughput (L/m²):.0f} L/m²**, the point at which the flow rate has dropped by 20% from its initial value. Processing beyond this point is inefficient and risks breaching the filter's maximum pressure rating.
+        - **Capacity Limit:** The analysis identifies the capacity limit at **{capacity_point['Throughput (L/m²)']:.0f} L/m²**, the point at which the flow rate has dropped by 20% from its initial value. Processing beyond this point is inefficient and risks breaching the filter's maximum pressure rating.
 
         #### Conclusion & Actionable Insights for MSAT
         This characterization study is fundamental to defining the viral filtration step for our CDMOs.
