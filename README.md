@@ -4,9 +4,6 @@ The MSAT Command Center is a strategic Streamlit dashboard designed for the Manu
 
 This application transforms raw manufacturing data and project status updates into actionable intelligence, enabling proactive management of technology transfers, process performance, and quality systems. It is built to support our "One Team" culture by fostering transparent, data-driven collaboration between Halozyme and our external partners.
 
-Author: Principal Engineer 1, MSAT
-Contact: p.engineer@halozyme.com
-
 Key Features & Dashboards
 This application is organized into a series of specialized dashboards, each tailored to a core responsibility of the MSAT role:
 
