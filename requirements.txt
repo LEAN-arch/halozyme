@@ -1,0 +1,16 @@
+# Core Application & Data Handling
+streamlit
+pandas
+# Pin NumPy to a version < 2.0 to be compatible with older libraries if needed,
+# though modern versions of shap/numba should handle this.
+# This provides maximum stability against NumPy 2.0 breaking changes.
+numpy<2.0
+
+# Visualization & Scientific Computing
+plotly
+scipy
+
+# Machine Learning & Explainability
+scikit-learn
+lightgbm
+
