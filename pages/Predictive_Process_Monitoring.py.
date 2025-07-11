@@ -1,0 +1,148 @@
+# pages/Predictive_Process_Monitoring.py
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
+import shap
+from utils import (generate_cpv_data, generate_pareto_data) # Re-using CPV and Pareto data generators
+
+# Simplified mock-up for this page's purpose
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+st.set_page_config(
+    page_title="Predictive Process Monitoring | Halozyme",
+    layout="wide"
+)
+
+st.title("🤖 Predictive Process Monitoring & RCA")
+st.markdown("### Applying advanced analytics for proactive deviation management and accelerated root cause analysis of external manufacturing.")
+
+with st.expander("⚠️ Important Disclaimer & Regulatory Context"):
+    st.warning("""
+    **FOR INVESTIGATIONAL USE ONLY.**
+
+    The models on this page are advanced analytical tools intended to **enhance process understanding and accelerate investigations**, in alignment with ICH Q8 (Quality by Design) and FDA's Process Analytical Technology (PAT) guidance.
+
+    - **Purpose:** To provide data-driven hypotheses for process deviations and to proactively monitor the state of control of our processes at CDMOs.
+    - **Limitation:** These models are **not validated for GxP decision-making** (e.g., they cannot be used to release a batch). All findings must be confirmed through our established, validated Quality System procedures.
+    - **Benefit:** They allow me, as the MSAT lead, to more effectively oversee our external manufacturing partners by identifying subtle trends and focusing investigation efforts, ultimately ensuring a more robust supply chain.
+    """)
+
+tab1, tab2 = st.tabs([
+    "**Predictive Deviation Analysis (Chromatography)**",
+    "**Automated Root Cause Insights (Deviations)**"
+])
+
+# --- MOCKUP for Tab 1 ---
+def generate_batch_trend_data():
+    np.random.seed(42)
+    batches = 30
+    df = pd.DataFrame({
+        'Batch': [f'B24-{100+i}' for i in range(batches)],
+        'Peak Asymmetry': np.random.normal(1.1, 0.05, batches),
+        'HMW Impurity (%)': np.random.normal(0.8, 0.1, batches)
+    })
+    # Introduce a trend towards failure
+    df.loc[20:, 'Peak Asymmetry'] += np.linspace(0, 0.2, 10)
+    df.loc[20:, 'HMW Impurity (%)'] += np.linspace(0, 0.5, 10)
+    df['Deviation_Risk_Score'] = (df['HMW Impurity (%)'] * 5) + ((df['Peak Asymmetry'] - 1) * 10)
+    return df
+
+with tab1:
+    st.header("Predictive Deviation Analysis for a Chromatography Step")
+    st.caption("Monitoring CPPs and CQAs in real-time to predict the likelihood of a batch deviating from its expected outcome.")
+
+    with st.expander("🔬 **The Goal & Method**"):
+        st.markdown("""
+        #### The Goal
+        To proactively identify batches that are exhibiting subtle trends towards failure during a critical chromatography step at a CDMO. Instead of waiting for a final QC result to fail specification, this model provides a "Deviation Risk Score" after each batch, allowing for early intervention.
+
+        #### The Method
+        A multivariate model is trained on historical batch data, correlating in-process parameters (like peak asymmetry, yield, pool conductivity) with final quality attributes (like purity and impurity levels). The model learns the complex "signature" of a batch that is beginning to deviate. The output is a single risk score that summarizes the overall health of the batch.
+        """)
+
+    batch_df = generate_batch_trend_data()
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=batch_df['Batch'], y=batch_df['Deviation_Risk_Score'],
+        mode='lines+markers', name='Deviation Risk Score', line=dict(color='#005EB8')
+    ))
+    fig.add_hline(y=10, line_dash="dot", line_color="orange", annotation_text="Alert Limit")
+    fig.add_hline(y=15, line_dash="dot", line_color="red", annotation_text="Action Limit")
+
+    fig.update_layout(
+        title="Batch Deviation Risk Score Over Time",
+        xaxis_title="Batch ID",
+        yaxis_title="Calculated Risk Score",
+        xaxis={'type': 'category'} # Treat batch IDs as categories
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    with st.expander("📊 **Results & MSAT Action**"):
+        st.markdown("""
+        #### Analysis of the Trend
+        The risk score remained low and stable for the first ~20 batches, indicating a process in a state of control. However, a clear upward trend begins around batch B24-120, crossing the **Alert Limit** and approaching the **Action Limit**. This is a powerful early warning that the process is drifting.
+
+        #### Actionable Insight for MSAT
+        As the Principal Engineer, this chart is my signal to act *before* a failure occurs.
+        1.  **Contact CDMO:** I would immediately contact my counterpart at the CDMO to review the process data for the last several batches (e.g., B24-120 onwards).
+        2.  **Hypothesis Generation:** My primary hypothesis would be **column degradation**, as this often manifests as worsening peak asymmetry and reduced impurity clearance over time.
+        3.  **Preventive Action:** I would recommend that the CDMO perform column performance testing (e.g., HETP, asymmetry) *before* the next batch is run. If performance is confirmed to be declining, a column re-pack or replacement can be scheduled, preventing a costly batch failure and a formal deviation.
+        """)
+
+
+with tab2:
+    st.header("Automated Root Cause Insights for Deviations")
+    st.caption("Using historical deviation data to accelerate root cause analysis for new non-conformances.")
+
+    with st.expander("🔬 **The Goal & Method**"):
+        st.markdown("""
+        #### The Goal
+        When a deviation occurs at a CDMO, a formal root cause investigation is required. This can be time-consuming. This tool uses a machine learning model, trained on our historical deviation records, to provide an immediate, data-driven hypothesis for the most likely root cause.
+
+        #### The Method: Random Forest Classifier
+        A **Random Forest** model is trained on a dataset containing parameters of past deviations (e.g., unit operation, equipment used, raw material type) and their formally assigned root cause (e.g., 'Buffer Prep Error', 'Operator Error'). By learning these patterns, it can predict the most probable cause for a new set of deviation parameters.
+        """)
+
+    pareto_df = generate_pareto_data()
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        st.subheader("Top Drivers of Historical Deviations")
+        st.markdown("Pareto analysis of confirmed root causes from past investigations.")
+        
+        pareto_df['Cumulative %'] = (pareto_df['Count'].cumsum() / pareto_df['Count'].sum()) * 100
+        fig_pareto = make_subplots(specs=[[{"secondary_y": True}]])
+        fig_pareto.add_trace(go.Bar(x=pareto_df['Root Cause Category'], y=pareto_df['Count'], name='Deviation Count'), secondary_y=False)
+        fig_pareto.add_trace(go.Scatter(x=pareto_df['Root Cause Category'], y=pareto_df['Cumulative %'], name='Cumulative %', line=dict(color='red')), secondary_y=True)
+        fig_pareto.update_layout(title_text="Pareto Chart of Deviation Root Causes", legend=dict(x=0.6, y=0.9))
+        fig_pareto.update_yaxes(title_text="<b>Count</b>", secondary_y=False)
+        fig_pareto.update_yaxes(title_text="<b>Cumulative Percentage (%)</b>", secondary_y=True, range=[0, 101])
+        st.plotly_chart(fig_pareto, use_container_width=True)
+
+    with col2:
+        st.subheader("Simulate a New Deviation for RCA")
+        st.markdown("Enter the parameters for a new deviation to get a predicted root cause.")
+        
+        unit_op = st.selectbox("Unit Operation", ["IEX Chromatography", "UF/DF", "Viral Filtration"])
+        equipment = st.selectbox("Equipment Type", ["Column", "Skid", "Filter Housing"])
+        is_new_material = st.toggle("Involved a new raw material lot?", value=True)
+
+        # Simplified prediction logic for mockup
+        st.error(f"**Predicted Root Cause:** Buffer Preparation Error")
+        st.write("Confidence: 65%")
+        st.info("Secondary Cause: Operator Error (20%)")
+
+
+    with st.expander("📊 **Results & MSAT Action**"):
+        st.markdown("""
+        #### Analysis & Actionable Insight
+        - **Pareto Chart:** The analysis of historical data is invaluable for long-term strategy. It clearly shows that **Buffer Preparation Error** is the single largest driver of deviations across our network. This provides a strong, data-driven justification for a global initiative to improve buffer prep procedures, training, or automation at our CDMO partners.
+        - **Predicted Root Cause:** For a new deviation (e.g., an out-of-spec IEX pool), the model provides an immediate hypothesis. Instead of launching a broad investigation, my first action as the MSAT lead is to direct the CDMO team to **quarantine and re-test the specific buffer lots** used for the failed batch. This focuses the investigation, saves significant time, and accelerates the path to resolution.
+        """)
